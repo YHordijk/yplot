@@ -1,11 +1,15 @@
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from collections import OrderedDict
+# from yplot import config
 
 
 class Bar:
     def __init__(self, *args, **kwargs):
+        self.group_label_loc: float = kwargs.pop('group_label_loc', None)
+
         # we will make use of pyplots axes instead of global functions
         # user can give their own axes
         if 'axes' in kwargs:
@@ -19,11 +23,14 @@ class Bar:
         self.labels = []
         self.colors = []
         self.groups = None
-        self.bar_spacing: float = 0.2
+        self.bar_spacing: float = 0.25
         self.group_spacing: int = 1
-        self.group_label_axis_label_spacing: float = .1
+        # self.group_label_axis_label_spacing: float = .1
+
 
         self.xtick_settings = {}
+        self.legend_settings = {}
+        self.bar_settings = dict(align='edge', edgecolor='#030203', linewidth=1)
 
     def add_series(self, X: list, Y: list, label: str = None, color=None):
         ''' Add data to plot.
@@ -62,7 +69,7 @@ class Bar:
         for n in range(nbars_per_label):
             # the locations are calculated such that they are centered around the x-axis value. This enables centered x-axis labels
             loc = [origin + i + n/nbars_per_label * (1 - self.bar_spacing) - .5 + self.bar_spacing/2 for i in range(len(data))]
-            self.axes.bar(loc, [x[n] for x in data.values()], width=width, align='edge', label=self.labels[n] if use_labels else None, color=self.colors[n])
+            self.axes.bar(loc, [x[n] for x in data.values()], width=width, label=self.labels[n] if use_labels else None, color=self.colors[n], **self.bar_settings)
 
     def render(self):
         # upon rendering, first clear the current axes
@@ -85,14 +92,27 @@ class Bar:
                 self._render_single(data, origin=origin, use_labels=origin == 0)
                 xtick_labels.extend(groupxs)
                 xtick_locs.extend(range(origin, origin + len(groupxs)))
-                self.axes.text(origin + len(data)/2 - .5, -.1, groupname, transform=self.axes.get_xaxis_transform(), fontweight='heavy', va='top', ha='center')
+                if self.group_label_loc is None:
+                    group_label_loc = self.axes.get_ylim()[0] - (self.axes.get_ylim()[1] - self.axes.get_ylim()[0]) * .2
+                else:
+                    group_label_loc = self.group_label_loc
+                print(group_label_loc)
+                self.axes.text(origin + len(data)/2 - .5, group_label_loc, groupname, fontweight='heavy', va='top', ha='center')
                 origin += len(data) + self.group_spacing
 
             self.axes.set_xticks(xtick_locs, xtick_labels, **self.xtick_settings)
-        self.axes.legend()
+        self.axes.legend(**self.legend_settings)
 
     def set_xtick_settings(self, **kwargs):
-        self.xtick_settings = kwargs
+        self.xtick_settings.update(kwargs)
+        self.render()
+
+    def set_legend_settings(self, **kwargs):
+        self.legend_settings.update(kwargs)
+        self.render()
+
+    def set_bar_settings(self, **kwargs):
+        self.bar_settings.update(kwargs)
         self.render()
 
     def set_group(self, groupname: str, groupxs: list):
@@ -139,6 +159,7 @@ if __name__ == '__main__':
     bar.set_group('First', ['a', 'b', 'c'])
     bar.set_group('Second', ['a', 'c'])
     bar.sort('mean')
+    bar.set_legend_settings(ncols=2, loc='upper right', frameon=False)
 
     fig.tight_layout()
     bar.show()
